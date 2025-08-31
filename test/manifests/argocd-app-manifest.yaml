@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: event-booking-app-${ENVIRONMENT}
+  namespace: ${ARGOCD_NAMESPACE}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: ${APP_REPO_URL}
+    targetRevision: HEAD
+    path: ${APP_REPO_PATH}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: event-booking-${ENVIRONMENT}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
