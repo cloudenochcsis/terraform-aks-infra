@@ -1,8 +1,8 @@
-# AKS GitOps Deployment Guide
+# 3-Tier Application AKS GitOps Infrastructure
 
-**Complete step-by-step guide to deploy AKS with GitOps using Terraform and ArgoCD**
+**Complete infrastructure setup for deploying 3-tier applications on AKS using GitOps**
 
-This repository provides a production-ready setup for deploying applications to Azure Kubernetes Service (AKS) using GitOps principles with ArgoCD and Terraform.
+This repository provides a production-ready infrastructure setup for deploying 3-tier applications to Azure Kubernetes Service (AKS) using GitOps principles with ArgoCD and Terraform.
 
 ## Credits
 
@@ -31,10 +31,11 @@ Special thanks to Piyush Sachdeva for creating this comprehensive learning resou
 
 ### Components
 
+- **Application**: 3-tier web application (Frontend, Backend API, Database)
 - **Infrastructure**: Azure Kubernetes Service (AKS) with auto-scaling
 - **GitOps Platform**: ArgoCD for continuous deployment
-- **State Management**: Terraform with remote state (optional)
-- **Authentication**: Azure AD integration with local admin accounts
+- **State Management**: Terraform with remote state (Azure Storage)
+- **Secrets Management**: Azure Key Vault with External Secrets Operator
 - **Networking**: Azure CNI with network policies
 
 <img width="1519" height="836" alt="Screenshot 2025-07-18 at 5 31 50 AM" src="https://github.com/user-attachments/assets/c1ce8dfc-cb87-4620-bfad-6c6d573d1709" />
@@ -214,7 +215,7 @@ cd Terraform-Full-Course-Azure/lessons/day28
 cp -r manifest-files/* /path/to/your/gitops-configs/
 
 # Or if you're already in the gitops-configs directory:
-# cp /path/to/this/project/manifest-files/3tire-configs/* .
+# cp /path/to/this/project/Manifests/3-tier-configs/* .
 
 # Navigate to your GitOps repository
 cd /path/to/your/gitops-configs
@@ -222,7 +223,7 @@ cd /path/to/your/gitops-configs
 # Verify the files are copied correctly
 ls -la
 .
-├── 3tire-configs
+├── 3-tier-configs
 │   ├── argocd-application.yaml
 │   ├── backend-config.yaml
 │   ├── backend.yaml
@@ -450,14 +451,14 @@ terraform show | grep -A 5 "key_vault_secrets_provider" | grep "client_id"
 
 #### Required Updates in Your GitOps Repository:
 
-**File: `3tire-configs/key-vault-secrets.yaml`**
+**File: `3-tier-configs/key-vault-secrets.yaml`**
 
 ```yaml
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
   name: postgres-secrets-provider
-  namespace: 3tirewebapp-dev
+  namespace: 3-tier-webapp-dev
 spec:
   provider: azure
   parameters:
@@ -501,7 +502,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: key-vault-config
-  namespace: 3tirewebapp-dev
+  namespace: 3-tier-webapp-dev
 data:
   KEY_VAULT_NAME: "REPLACE_WITH_KEY_VAULT_NAME"                 # ← Update this
   KEY_VAULT_SECRET_POSTGRES_USERNAME: "postgres-username"
@@ -545,7 +546,7 @@ if [ ! -d "$GITOPS_REPO_PATH" ]; then
 fi
 
 # Update the key-vault-secrets.yaml file
-KEY_VAULT_FILE="$GITOPS_REPO_PATH/3tire-configs/key-vault-secrets.yaml"
+KEY_VAULT_FILE="$GITOPS_REPO_PATH/3-tier-configs/key-vault-secrets.yaml"
 
 if [ -f "$KEY_VAULT_FILE" ]; then
   echo "Updating $KEY_VAULT_FILE..."
@@ -602,7 +603,7 @@ echo "Key Vault Secrets Provider Client ID: $KV_SECRETS_PROVIDER_CLIENT_ID"
 cd /path/to/your/gitops-configs
 
 # Edit the key-vault-secrets.yaml file
-vim 3tire-configs/key-vault-secrets.yaml
+vim 3-tier-configs/key-vault-secrets.yaml
 
 # Replace these placeholders:
 # REPLACE_WITH_KUBELET_CLIENT_ID     → Use the Key Vault Secrets Provider client ID from above
@@ -617,7 +618,7 @@ vim 3tire-configs/key-vault-secrets.yaml
 git diff
 
 # Add and commit the changes
-git add 3tire-configs/key-vault-secrets.yaml
+git add 3-tier-configs/key-vault-secrets.yaml
 git commit -m "Configure Key Vault integration with actual values
 
 - Updated userAssignedIdentityID with kubelet client ID
@@ -635,12 +636,12 @@ git push origin main
 kubectl get applications -n argocd
 
 # Force sync if needed
-kubectl patch application 3tirewebapp-dev -n argocd --type merge \
+kubectl patch application 3-tier-webapp-dev -n argocd --type merge \
   --patch '{"operation":{"sync":{"syncStrategy":{"force":true}}}}'
 
 # Verify Key Vault integration is working
-kubectl get secretproviderclass -n 3tirewebapp-dev
-kubectl describe secretproviderclass postgres-secrets-provider -n 3tirewebapp-dev
+kubectl get secretproviderclass -n 3-tier-webapp-dev
+kubectl describe secretproviderclass postgres-secrets-provider -n 3-tier-webapp-dev
 ```
 
 ### 6.5 Troubleshooting Key Vault Issues
@@ -650,13 +651,13 @@ kubectl describe secretproviderclass postgres-secrets-provider -n 3tirewebapp-de
 **1. "tenantId is not set" Error**
 ```bash
 # Ensure tenantId is properly set in SecretProviderClass
-kubectl get secretproviderclass postgres-secrets-provider -n 3tirewebapp-dev -o yaml | grep tenantId
+kubectl get secretproviderclass postgres-secrets-provider -n 3-tier-webapp-dev -o yaml | grep tenantId
 ```
 
 **2. "Multiple user assigned identities" Error**  
 ```bash
 # Ensure userAssignedIdentityID is specified
-kubectl get secretproviderclass postgres-secrets-provider -n 3tirewebapp-dev -o yaml | grep userAssignedIdentityID
+kubectl get secretproviderclass postgres-secrets-provider -n 3-tier-webapp-dev -o yaml | grep userAssignedIdentityID
 ```
 
 **3. "403 Forbidden" Key Vault Access Error**
@@ -671,7 +672,7 @@ az keyvault show --name $(terraform output -raw key_vault_name) \
 **4. Pod Stuck in "ContainerCreating"**
 ```bash
 # Check pod events for CSI mount errors
-kubectl describe pod -l app=postgres -n 3tirewebapp-dev
+kubectl describe pod -l app=postgres -n 3-tier-webapp-dev
 
 # Check CSI driver logs
 kubectl logs -n kube-system -l app=secrets-store-csi-driver
@@ -721,14 +722,14 @@ echo "Validating Key Vault integration..."
 
 # Check if SecretProviderClass exists and is configured
 echo "1. Checking SecretProviderClass..."
-kubectl get secretproviderclass postgres-secrets-provider -n 3tirewebapp-dev > /dev/null 2>&1
+kubectl get secretproviderclass postgres-secrets-provider -n 3-tier-webapp-dev > /dev/null 2>&1
 if [ $? -eq 0 ]; then
   echo "   SecretProviderClass exists"
   
   # Check if required fields are configured
-  TENANT_ID=$(kubectl get secretproviderclass postgres-secrets-provider -n 3tirewebapp-dev -o jsonpath='{.spec.parameters.tenantId}')
-  USER_ID=$(kubectl get secretproviderclass postgres-secrets-provider -n 3tirewebapp-dev -o jsonpath='{.spec.parameters.userAssignedIdentityID}')
-  KV_NAME=$(kubectl get secretproviderclass postgres-secrets-provider -n 3tirewebapp-dev -o jsonpath='{.spec.parameters.keyvaultName}')
+  TENANT_ID=$(kubectl get secretproviderclass postgres-secrets-provider -n 3-tier-webapp-dev -o jsonpath='{.spec.parameters.tenantId}')
+  USER_ID=$(kubectl get secretproviderclass postgres-secrets-provider -n 3-tier-webapp-dev -o jsonpath='{.spec.parameters.userAssignedIdentityID}')
+  KV_NAME=$(kubectl get secretproviderclass postgres-secrets-provider -n 3-tier-webapp-dev -o jsonpath='{.spec.parameters.keyvaultName}')
   
   if [ "$TENANT_ID" != "" ]; then echo "   Tenant ID configured: $TENANT_ID"; else echo "   ERROR: Tenant ID missing"; fi
   if [ "$USER_ID" != "" ]; then echo "   User Assigned Identity ID configured: $USER_ID"; else echo "   ERROR: User Assigned Identity ID missing"; fi
@@ -739,7 +740,7 @@ fi
 
 # Check if pods are running
 echo "2. Checking pod status..."
-kubectl get pods -n 3tirewebapp-dev --no-headers | while read line; do
+kubectl get pods -n 3-tier-webapp-dev --no-headers | while read line; do
   POD_NAME=$(echo $line | awk '{print $1}')
   POD_STATUS=$(echo $line | awk '{print $3}')
   if [ "$POD_STATUS" = "Running" ]; then
@@ -751,7 +752,7 @@ done
 
 # Check if Key Vault secret is created
 echo "3. Checking Key Vault secret creation..."
-kubectl get secret postgres-credentials-from-kv -n 3tirewebapp-dev > /dev/null 2>&1
+kubectl get secret postgres-credentials-from-kv -n 3-tier-webapp-dev > /dev/null 2>&1
 if [ $? -eq 0 ]; then
   echo "   Key Vault secret successfully synced to Kubernetes"
 else
@@ -890,13 +891,13 @@ kubectl port-forward svc/argocd-server -n argocd 8080:80
 kubectl get applications -n argocd
 
 # 2. For the 3-tier web application, start port forwarding to frontend
-kubectl port-forward svc/frontend -n 3tirewebapp-dev 3000:3000
+kubectl port-forward svc/frontend -n 3-tier-webapp-dev 3000:3000
 
 # 3. Open your browser and navigate to:
 # http://localhost:3000
 ```
 
-**Your 3-tier application is now accessible! This includes a React frontend, Node.js backend, and PostgreSQL database.**
+**Your 3-tier application is now accessible! This includes a frontend web application, backend API, and PostgreSQL database.**
 
 ---
 
@@ -905,15 +906,15 @@ kubectl port-forward svc/frontend -n 3tirewebapp-dev 3000:3000
 ### Quick Access (Recommended)
 ```bash
 # Port forward to frontend service for immediate access
-kubectl port-forward svc/frontend -n 3tirewebapp-dev 3000:3000
+kubectl port-forward svc/frontend -n 3-tier-webapp-dev 3000:3000
 ```
 
 ### All Access Methods for Your 3-Tier Application
 
 | Method | Use Case | Prerequisites | Command/Steps | Access URL |
 |--------|----------|---------------|---------------|------------|
-| **Port Forward** | Development, Testing | kubectl access | `kubectl port-forward svc/frontend -n 3tirewebapp-dev 3000:3000` | `http://localhost:3000` |
-| **Ingress (Built-in)** | Production-like, Domain Access | NGINX Ingress Controller + /etc/hosts | Install NGINX Ingress + configure hosts file | `http://3tirewebapp-dev.local` |
+| **Port Forward** | Development, Testing | kubectl access | `kubectl port-forward svc/frontend -n 3-tier-webapp-dev 3000:3000` | `http://localhost:3000` |
+| **Ingress (Built-in)** | Production-like, Domain Access | NGINX Ingress Controller + /etc/hosts | Install NGINX Ingress + configure hosts file | `http://3-tier-webapp-dev.local` |
 | **LoadBalancer** | External Cloud Access | Azure LoadBalancer support | Patch service to LoadBalancer type | `http://<EXTERNAL-IP>:3000` |
 | **NodePort** | Direct Node Access | Node IP access | Patch service to NodePort type | `http://<NODE-IP>:<NodePort>` |
 
@@ -937,13 +938,13 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: frontend-ingress
-  namespace: 3tirewebapp-dev
+  namespace: 3-tier-webapp-dev
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   rules:
-    - host: 3tirewebapp-dev.local
+    - host: 3-tier-webapp-dev.local
       http:
         paths:
           - path: /
@@ -956,7 +957,7 @@ spec:
 ```
 
 **Key Features:**
-- **Host**: `3tirewebapp-dev.local` (customizable domain for local testing)
+- **Host**: `3-tier-webapp-dev.local` (customizable domain for local testing)
 - **Path**: `/` (root path routing to frontend)
 - **Target Service**: `frontend` service on port `3000`
 - **Ingress Class**: `nginx` (requires NGINX Ingress Controller)
@@ -987,20 +988,20 @@ INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpa
 echo "Ingress IP: $INGRESS_IP"
 
 # Add to /etc/hosts for local domain resolution
-echo "$INGRESS_IP 3tirewebapp-dev.local" | sudo tee -a /etc/hosts
+echo "$INGRESS_IP 3-tier-webapp-dev.local" | sudo tee -a /etc/hosts
 
 # Verify the ingress is working
-kubectl get ingress -n 3tirewebapp-dev
+kubectl get ingress -n 3-tier-webapp-dev
 ```
 
 #### Step 3: Access via Domain
 
 ```bash
 # Open your browser to:
-# http://3tirewebapp-dev.local
+# http://3-tier-webapp-dev.local
 
 # Or test with curl
-curl -H "Host: 3tirewebapp-dev.local" http://$INGRESS_IP
+curl -H "Host: 3-tier-webapp-dev.local" http://$INGRESS_IP
 ```
 
 ### Alternative Access Methods
@@ -1009,59 +1010,63 @@ curl -H "Host: 3tirewebapp-dev.local" http://$INGRESS_IP
 
 ```bash
 # Patch the frontend service to use LoadBalancer type
-kubectl patch svc frontend -n 3tirewebapp-dev -p '{"spec":{"type":"LoadBalancer"}}'
+kubectl patch svc frontend -n 3-tier-webapp-dev -p '{"spec":{"type":"LoadBalancer"}}'
 
 # Wait for external IP assignment (may take 2-5 minutes)
 echo "Waiting for external IP..."
-kubectl get svc frontend -n 3tirewebapp-dev --watch
+kubectl get svc frontend -n 3-tier-webapp-dev --watch
 
 # Get the external IP and access your application
-EXTERNAL_IP=$(kubectl get svc frontend -n 3tirewebapp-dev -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+EXTERNAL_IP=$(kubectl get svc frontend -n 3-tier-webapp-dev -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "Access your application at: http://$EXTERNAL_IP:3000"
 
 # To revert back to ClusterIP:
-kubectl patch svc frontend -n 3tirewebapp-dev -p '{"spec":{"type":"ClusterIP"}}'
+kubectl patch svc frontend -n 3-tier-webapp-dev -p '{"spec":{"type":"ClusterIP"}}'
 ```
 
 #### Method 2: NodePort (Direct Node Access)
 
 ```bash
 # Patch the frontend service to use NodePort type
-kubectl patch svc frontend -n 3tirewebapp-dev -p '{"spec":{"type":"NodePort"}}'
+kubectl patch svc frontend -n 3-tier-webapp-dev -p '{"spec":{"type":"NodePort"}}'
 
 # Get the NodePort and Node IP
-NODE_PORT=$(kubectl get svc frontend -n 3tirewebapp-dev -o jsonpath='{.spec.ports[0].nodePort}')
+NODE_PORT=$(kubectl get svc frontend -n 3-tier-webapp-dev -o jsonpath='{.spec.ports[0].nodePort}')
 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
 
 echo "Access your application at: http://$NODE_IP:$NODE_PORT"
 
 # To revert back to ClusterIP:
-kubectl patch svc frontend -n 3tirewebapp-dev -p '{"spec":{"type":"ClusterIP"}}'
+kubectl patch svc frontend -n 3-tier-webapp-dev -p '{"spec":{"type":"ClusterIP"}}'
 ```
 
 ### Your 3-Tier Application Architecture
 
 Your deployed application consists of:
 
-#### **Frontend (React Application)**
-- **Service**: `frontend` on port 3000 (ClusterIP)
-- **Container**: `akpadetsi/event-booking-frontend:v2`
-- **Features**: React-based web interface with Express.js proxy server
-- **Ingress**: Pre-configured with domain `3tirewebapp-dev.local`
+#### **Frontend (Web Application)**
+- **Service**: `frontend` on port 80 (LoadBalancer)
+- **Container**: Customizable frontend application container
+- **Features**: Modern web interface with responsive design
+- **Access**: Directly accessible via LoadBalancer external IP
 - **Health Checks**: HTTP probes on `/` endpoint with liveness/readiness checks
 - **Resources**: 100m CPU request, 200m CPU limit, 128Mi-256Mi memory
 
-#### **Backend (Node.js API)**
+#### **Backend (API Service)**
 - **Service**: `backend` on port 8080 (ClusterIP)
-- **Container**: `akpadetsi/event-booking-backend:latest`
-- **Database Connection**: Connects to PostgreSQL via ConfigMap/Secret settings
-- **API Endpoints**: Health check on `/health`, business logic APIs
-- **Frontend Integration**: Backend URL configured as `http://backend:8080`
+- **Container**: Customizable backend API container
+- **Database Connection**: Connects to PostgreSQL via environment variables from secrets
+- **API Endpoints**: Health check on `/health`, application-specific APIs
+- **Features**: Business logic, data processing, authentication
 - **Resources**: 100m CPU request, 200m CPU limit, 128Mi-256Mi memory
 
 #### **Database (PostgreSQL)**
 - **Service**: `postgres` on port 5432 (ClusterIP)
 - **Container**: `postgres:15`
+- **Database**: Configurable database name for application data
+- **Persistence**: 1Gi PVC for data storage with automatic backups
+- **Secrets**: Database credentials managed via Azure Key Vault integration
+- **Features**: Application data storage, user information, business data
 - **Persistence**: Uses `postgres-pvc` persistent volume for data storage
 - **Database**: `goalsdb` with user `postgres`
 - **Configuration**: Environment variables managed via ConfigMaps and Secrets
@@ -1070,14 +1075,14 @@ Your deployed application consists of:
 
 ```bash
 # Method 1: Frontend Browser Testing (Recommended)
-# 1. Use port forwarding: kubectl port-forward svc/frontend -n 3tirewebapp-dev 3000:3000
+# 1. Use port forwarding: kubectl port-forward svc/frontend -n 3-tier-webapp-dev 3000:3000
 # 2. Open browser to: http://localhost:3000
 # 3. Test the web interface functionality
 # 4. Verify frontend-backend communication through UI interactions
 # 5. Check database interactions via application features
 
 # Method 2: API Testing (Backend Direct)
-kubectl port-forward svc/backend -n 3tirewebapp-dev 8080:8080 &
+kubectl port-forward svc/backend -n 3-tier-webapp-dev 8080:8080 &
 echo "Testing backend health endpoint..."
 curl -X GET http://localhost:8080/health
 echo "Testing backend API endpoints..."
@@ -1086,7 +1091,7 @@ kill %1  # Stop background port forwarding
 
 # Method 3: Database Connection Testing (Internal)
 echo "Testing database connectivity from backend pod..."
-kubectl exec -it deployment/backend -n 3tirewebapp-dev -- \
+kubectl exec -it deployment/backend -n 3-tier-webapp-dev -- \
   psql -h postgres -U postgres -d goalsdb -c "SELECT version();"
 
 # Stop background port forwards
@@ -1098,23 +1103,23 @@ kill %1 %2
 
 ```bash
 # Check all pods are running and ready
-kubectl get pods -n 3tirewebapp-dev
-kubectl describe pods -n 3tirewebapp-dev
+kubectl get pods -n 3-tier-webapp-dev
+kubectl describe pods -n 3-tier-webapp-dev
 
 # Check application logs
-kubectl logs deployment/frontend -n 3tirewebapp-dev --tail=50
-kubectl logs deployment/backend -n 3tirewebapp-dev --tail=50
-kubectl logs deployment/postgres -n 3tirewebapp-dev --tail=50
+kubectl logs deployment/frontend -n 3-tier-webapp-dev --tail=50
+kubectl logs deployment/backend -n 3-tier-webapp-dev --tail=50
+kubectl logs deployment/postgres -n 3-tier-webapp-dev --tail=50
 
 # Verify service endpoints
-kubectl get endpoints -n 3tirewebapp-dev
+kubectl get endpoints -n 3-tier-webapp-dev
 
 # Test internal service communication
 kubectl run debug-pod --image=curlimages/curl --rm -it --restart=Never -- \
-  curl -s http://frontend.3tirewebapp-dev.svc.cluster.local:3000
+  curl -s http://frontend.3-tier-webapp-dev.svc.cluster.local:3000
 
 kubectl run debug-pod --image=curlimages/curl --rm -it --restart=Never -- \
-  curl -s http://backend.3tirewebapp-dev.svc.cluster.local:8080/health
+  curl -s http://backend.3-tier-webapp-dev.svc.cluster.local:8080/health
 ```
 
 ### Troubleshooting Application Access
@@ -1124,28 +1129,28 @@ kubectl run debug-pod --image=curlimages/curl --rm -it --restart=Never -- \
 **1. Frontend Port Forward Connection Refused**
 ```bash
 # Check if frontend service exists and has endpoints
-kubectl get svc,endpoints frontend -n 3tirewebapp-dev
+kubectl get svc,endpoints frontend -n 3-tier-webapp-dev
 
 # Verify frontend pod is running and ready
-kubectl get pods -l app=frontend -n 3tirewebapp-dev
-kubectl logs deployment/frontend -n 3tirewebapp-dev
+kubectl get pods -l app=frontend -n 3-tier-webapp-dev
+kubectl logs deployment/frontend -n 3-tier-webapp-dev
 
 # Try different local port
-kubectl port-forward svc/frontend -n 3tirewebapp-dev 3001:3000
+kubectl port-forward svc/frontend -n 3-tier-webapp-dev 3001:3000
 ```
 
 **2. Application Shows Backend Connection Error**
 ```bash
 # Check backend service connectivity
-kubectl get svc backend -n 3tirewebapp-dev
-kubectl get pods -l app=backend -n 3tirewebapp-dev
+kubectl get svc backend -n 3-tier-webapp-dev
+kubectl get pods -l app=backend -n 3-tier-webapp-dev
 
 # Verify backend configuration
-kubectl describe configmap frontend-config -n 3tirewebapp-dev
-kubectl describe configmap backend-config -n 3tirewebapp-dev
+kubectl describe configmap frontend-config -n 3-tier-webapp-dev
+kubectl describe configmap backend-config -n 3-tier-webapp-dev
 
 # Test backend API directly
-kubectl port-forward svc/backend -n 3tirewebapp-dev 8080:8080 &
+kubectl port-forward svc/backend -n 3-tier-webapp-dev 8080:8080 &
 curl -v http://localhost:8080/health
 kill %1
 ```
@@ -1153,15 +1158,15 @@ kill %1
 **3. Database Connection Issues**
 ```bash
 # Check PostgreSQL pod and service
-kubectl get pods -l app=postgres -n 3tirewebapp-dev
-kubectl get svc postgres -n 3tirewebapp-dev
+kubectl get pods -l app=postgres -n 3-tier-webapp-dev
+kubectl get svc postgres -n 3-tier-webapp-dev
 
 # Check database credentials and configuration
-kubectl describe secret postgres-secret -n 3tirewebapp-dev
-kubectl describe configmap postgres-config -n 3tirewebapp-dev
+kubectl describe secret postgres-secret -n 3-tier-webapp-dev
+kubectl describe configmap postgres-config -n 3-tier-webapp-dev
 
 # Test database connection from backend pod
-kubectl exec -it deployment/backend -n 3tirewebapp-dev -- \
+kubectl exec -it deployment/backend -n 3-tier-webapp-dev -- \
   nc -z postgres 5432 && echo "Database reachable" || echo "Database unreachable"
 ```
 
@@ -1172,14 +1177,14 @@ kubectl get pods -n ingress-nginx
 kubectl get svc -n ingress-nginx
 
 # Verify ingress resource
-kubectl get ingress -n 3tirewebapp-dev
-kubectl describe ingress frontend-ingress -n 3tirewebapp-dev
+kubectl get ingress -n 3-tier-webapp-dev
+kubectl describe ingress frontend-ingress -n 3-tier-webapp-dev
 
 # Check /etc/hosts entry
-grep "3tirewebapp-dev.local" /etc/hosts
+grep "3-tier-webapp-dev.local" /etc/hosts
 
 # Test with curl using Host header
-curl -H "Host: 3tirewebapp-dev.local" http://<INGRESS-IP>
+curl -H "Host: 3-tier-webapp-dev.local" http://<INGRESS-IP>
 ```
 
 ---
