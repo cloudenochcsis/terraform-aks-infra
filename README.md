@@ -86,7 +86,7 @@ Special thanks to Piyush Sachdeva for creating this comprehensive learning resou
 
 ---
 
-## Cost Optimization 💰
+## Cost Optimization
 
 This infrastructure has been **optimized for cost savings of 70-85%** while maintaining functionality and reliability.
 
@@ -104,7 +104,7 @@ This infrastructure has been **optimized for cost savings of 70-85%** while main
 | Test | 100% | ~25% | **75%** |
 | Production | 100% | ~30% | **70%** |
 
-**📖 For complete cost optimization details, see [COST_OPTIMIZATION.md](./COST_OPTIMIZATION.md)**
+**For complete cost optimization details, see [COST_OPTIMIZATION.md](./COST_OPTIMIZATION.md)**
 
 ---
 

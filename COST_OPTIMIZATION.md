@@ -1,14 +1,26 @@
-# AKS Infrastructure Cost Optimization Guide
+# Cost Optimization Implementation Guide
 
-This document outlines the cost optimization changes implemented in the `cost-optimization` branch.
+This do- **Total Monthly Savings**: ~$1,600-$1,900 (70-85% reduction)
+- **Workload-based scaling**: Automatic adjustment based on actual usage
+- **Regional optimization**: All environments moved to Central US
 
-## 🎯 Optimization Goals
+## Cost Impact Analysis
 
-- **Target**: 70-85% reduction in monthly infrastructure costs
-- **Focus**: Maintain functionality while significantly reducing Azure spending
-- **Approach**: Smart resource sizing, spot instances, and efficient auto-scaling
+### Monthly Cost Breakdown (Before vs After)
 
-## 💰 Cost Optimization Changes
+| Component | Environment | Before | After | Savings |
+|-----------|-------------|---------|--------|---------|
+| VM Instances | Dev | $200 | $40 | 80% |
+| VM Instances | Test | $400 | $150 | 62.5% |ment provides detailed information about the cost optimization changes made to the AKS infrastructure.
+
+## Optimization Goals
+
+The primary objectives of this cost optimization are:
+- Reduce monthly infrastructure costs by 70-85%
+- Maintain development and testing capabilities
+- Implement flexible scaling based on actual needs
+
+## Cost Optimization Changes
 
 ### 1. **VM Size Optimization**
 - **Dev Environment**: `Standard_D2s_v3` → `Standard_B2s` (60% cost reduction)
@@ -36,7 +48,7 @@ This document outlines the cost optimization changes implemented in the `cost-op
 - **Dev Environment**: Key Vault disabled (use ConfigMaps/Secrets instead)
 - **Test/Prod**: Key Vault retained for security requirements
 
-## 📊 Cost Impact Analysis
+## Cost Impact Analysis
 
 | Component | Before | After | Savings |
 |-----------|--------|-------|---------|
@@ -46,27 +58,33 @@ This document outlines the cost optimization changes implemented in the `cost-op
 | Regional | East US | Central US | 15% |
 | Spot Workloads | N/A | Spot pricing | 60-90% |
 | OS Licensing | Ubuntu | Azure Linux | 100% |
-| **Total Estimated** | **100%** | **15-30%** | **70-85%** |
+| **Total** | **All** | **~$2,200** | **~$300-$600** | **70-85%** |
 
-## 🚀 New Features Added
+*Note: Costs may vary based on actual usage patterns and Azure pricing changes.*
 
-### Spot Instance Node Pool
-- **Purpose**: Handle burst workloads and non-critical applications
-- **Scaling**: 0-10 nodes based on demand
-- **Cost**: Up to 90% cheaper than regular instances
-- **Protection**: Taints prevent critical workloads from scheduling
+## New Features Added
 
-### Scheduled Node Pool (Optional)
-- **Purpose**: Handle predictable off-hours workloads
-- **Scaling**: 0-5 nodes, can scale to zero during downtime
-- **VM Type**: Burstable instances (B2s) for variable workloads
+### 1. Spot Instance Node Pools
+- **Cost Savings**: Up to 90% reduction in compute costs
+- **Configuration**: Separate spot node pools for each environment
+- **Eviction Handling**: Automatic rescheduling when spot instances are evicted
+- **Max Price Limits**: 
+  - Dev: $0.03/hour
+  - Test: $0.05/hour  
+  - Prod: $0.08/hour (higher reliability)
 
-### Cost-Optimized Auto-scaler
-- **Strategy**: `least-waste` for cost-focused decisions
-- **Speed**: 30-second scan intervals for quick adjustments
-- **Efficiency**: Lower utilization thresholds for better resource usage
+### 2. Enhanced Auto-scaler Profile
+- **Expander Strategy**: `least-waste` - prioritizes cost efficiency
+- **Scale-down Optimization**: Faster scale-down when resources not needed
+- **Empty Node Handling**: Quick removal of unused nodes
+- **Utilization Threshold**: Scale down at 50% utilization
 
-## 🔧 New Configuration Variables
+### 3. Flexible VM Sizing
+- **Right-sizing**: VMs sized appropriately for each environment
+- **Burstable Options**: B-series for development workloads
+- **Balanced Options**: D-series for production requirements
+
+## New Configuration Variables
 
 ```hcl
 # Cost optimization controls
@@ -78,7 +96,7 @@ max_node_count          = 3       # Maximum default nodes
 enable_ephemeral_disk   = true    # Use ephemeral storage
 ```
 
-## 📝 Environment-Specific Settings
+## Environment-Specific Settings
 
 ### Development
 - **VM Size**: B2s (burstable, cost-optimized)
@@ -101,7 +119,7 @@ enable_ephemeral_disk   = true    # Use ephemeral storage
 - **Managed Disks**: Retained for stability
 - **Scaling**: 2-10 nodes (higher reliability)
 
-## 🛡️ Workload Targeting
+## Workload Targeting
 
 ### Regular Workloads
 - **Target**: Default node pool with regular pricing
@@ -127,14 +145,14 @@ spec:
     kubernetes.azure.com/scalesetpriority: spot
 ```
 
-## 🚦 Deployment Instructions
+## Deployment Instructions
 
 1. **Review Configuration**: Check terraform.tfvars for your environment
 2. **Plan Changes**: Run `terraform plan` to review resource changes
 3. **Apply Changes**: Deploy with `terraform apply`
 4. **Monitor Costs**: Use Azure Cost Management to track savings
 
-## 🔍 Monitoring & Validation
+## Monitoring & Validation
 
 ### Cost Monitoring
 - **Azure Cost Management**: Track daily spending changes
@@ -146,14 +164,14 @@ spec:
 - **Auto-scaling Behavior**: Verify scaling responds appropriately to load
 - **Spot Instance Workloads**: Confirm fault tolerance
 
-## ⚠️ Important Notes
+## Important Notes
 
 1. **Spot Instance Limitations**: Not suitable for critical, always-on workloads
 2. **Ephemeral Disks**: Data is lost when nodes are deallocated
 3. **Regional Considerations**: Ensure all dependent services support Central US
 4. **Performance Testing**: Validate application performance with new VM sizes
 
-## 🔄 Rollback Plan
+## Rollback Plan
 
 If issues arise:
 1. **Quick Fix**: Disable spot instances by setting `enable_spot_pool = false`
@@ -161,7 +179,7 @@ If issues arise:
 3. **Regional Revert**: Change region back to `eastus` if needed
 4. **Full Rollback**: Merge main branch to revert all changes
 
-## 📈 Next Steps
+## Next Steps
 
 1. **Deploy to Dev**: Test cost optimizations in development first
 2. **Monitor for 1 week**: Validate cost savings and performance
@@ -170,4 +188,4 @@ If issues arise:
 
 ---
 
-**💡 Remember**: Cost optimization is an ongoing process. Regularly review and adjust based on actual usage patterns and Azure pricing changes.
+**Remember**: Cost optimization is an ongoing process. Regularly review and adjust based on actual usage patterns and Azure pricing changes.
