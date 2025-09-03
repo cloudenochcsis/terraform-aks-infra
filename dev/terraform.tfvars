@@ -33,6 +33,12 @@ min_node_count = 1              # Minimum nodes in default pool
 max_node_count = 3              # Maximum nodes in default pool
 enable_ephemeral_disk = true    # Use ephemeral disks for cost savings
 
+# Database Cost Optimization (Dev Environment)
+enable_azure_database = false          # Keep container DB for maximum cost savings
+database_sku_name = "B_Standard_B1ms"   # Burstable instance if enabled
+database_storage_mb = 20480             # 20GB minimum storage
+database_backup_retention_days = 7      # Minimum backup retention
+
 # Database Credentials (will be stored in Key Vault)
 postgres_username = "postgres"
 postgres_password = "F@nEvent$2024!BkG"

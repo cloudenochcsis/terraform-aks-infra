@@ -152,3 +152,28 @@ variable "enable_ephemeral_disk" {
   type        = bool
   default     = false
 }
+
+# Database provisioning options
+variable "enable_azure_database" {
+  description = "Enable Azure Database for PostgreSQL (vs container database)"
+  type        = bool
+  default     = false  # Keep container database by default for cost savings
+}
+
+variable "database_sku_name" {
+  description = "Database SKU name for cost optimization"
+  type        = string
+  default     = "B_Standard_B1ms"  # Burstable, cost-optimized
+}
+
+variable "database_storage_mb" {
+  description = "Database storage in MB"
+  type        = number
+  default     = 20480  # 20GB minimum for cost optimization
+}
+
+variable "database_backup_retention_days" {
+  description = "Database backup retention days"
+  type        = number
+  default     = 7  # Minimum for cost savings
+}

@@ -32,6 +32,12 @@ min_node_count = 1              # Minimum nodes in default pool
 max_node_count = 5              # Maximum nodes in default pool
 enable_ephemeral_disk = false   # Keep managed disks for test stability
 
+# Database Cost Optimization (Test Environment)
+enable_azure_database = true           # Enable Azure DB for testing
+database_sku_name = "B_Standard_B2s"   # Burstable, 2 vCore for better test performance
+database_storage_mb = 32768            # 32GB storage for test data
+database_backup_retention_days = 7     # Minimum backup retention
+
 # Database Credentials (will be stored in Key Vault)
 postgres_username = "postgres"
 postgres_password = "SecurePassword123!"

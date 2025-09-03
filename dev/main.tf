@@ -345,6 +345,80 @@ resource "azurerm_key_vault_secret" "postgres_connection_string" {
 }
 
 # ===============================
+# OPTIONAL: AZURE DATABASE FOR POSTGRESQL (COST-OPTIMIZED)
+# ===============================
+
+# Cost-optimized Azure Database for PostgreSQL Flexible Server
+resource "azurerm_postgresql_flexible_server" "main" {
+  count = var.enable_azure_database ? 1 : 0
+
+  name                   = "${local.resource_name_prefix}-postgres"
+  resource_group_name    = azurerm_resource_group.main.name
+  location               = azurerm_resource_group.main.location
+  
+  # Cost-optimized configuration
+  sku_name               = var.database_sku_name  # B_Standard_B1ms = Burstable, 1 vCore, 2GB RAM
+  storage_mb             = var.database_storage_mb  # 20GB minimum
+  version                = "13"  # Stable PostgreSQL version
+  
+  # Cost optimization settings
+  backup_retention_days  = var.database_backup_retention_days  # 7 days minimum
+  geo_redundant_backup_enabled = false  # Disable for cost savings (dev/test)
+  
+  # Network and security
+  public_network_access_enabled = false  # Private access only
+  
+  # Authentication
+  administrator_login    = var.postgres_username
+  administrator_password = var.postgres_password != "" ? var.postgres_password : random_password.postgres_password[0].result
+
+  # Auto-scaling settings for cost optimization
+  auto_grow_enabled = true  # Scale storage as needed
+  
+  tags = merge(local.common_tags, {
+    DatabaseType = "PostgreSQL"
+    CostOptimized = "true"
+  })
+
+  # Prevent accidental deletion
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [azurerm_resource_group.main]
+}
+
+# Database for the application
+resource "azurerm_postgresql_flexible_server_database" "main" {
+  count     = var.enable_azure_database ? 1 : 0
+  name      = var.postgres_database
+  server_id = azurerm_postgresql_flexible_server.main[0].id
+  collation = "en_US.utf8"
+  charset   = "utf8"
+}
+
+# Private endpoint for secure database access (cost-aware)
+resource "azurerm_private_endpoint" "postgres" {
+  count               = var.enable_azure_database ? 1 : 0
+  name                = "${local.resource_name_prefix}-postgres-pe"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  subnet_id           = azurerm_kubernetes_cluster.main.agent_pool_profile[0].vnet_subnet_id
+
+  private_service_connection {
+    name                           = "${local.resource_name_prefix}-postgres-psc"
+    private_connection_resource_id = azurerm_postgresql_flexible_server.main[0].id
+    is_manual_connection           = false
+    subresource_names             = ["postgresqlServer"]
+  }
+
+  tags = merge(local.common_tags, {
+    DatabaseType = "PostgreSQL"
+    CostOptimized = "true"
+  })
+}
+
+# ===============================
 # COST OPTIMIZATION: SPOT NODE POOL
 # ===============================
 
