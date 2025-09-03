@@ -21,7 +21,11 @@ variable "kubernetes_cluster_name" {
   default     = "aks-gitops-cluster"
 }
 
-
+variable "node_count" {
+  description = "Number of nodes in the default node pool"
+  type        = number
+  default     = 2
+}
 
 variable "vm_size" {
   description = "Size of the Virtual Machine"
@@ -64,7 +68,7 @@ variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
   default = {
-    Environment = "production"
+    Environment = "development"
     Project     = "AKS-GitOps"
     ManagedBy   = "Terraform"
   }
@@ -72,33 +76,79 @@ variable "tags" {
 
 # Key Vault Configuration
 variable "enable_key_vault" {
-  description = "Enable Azure Key Vault for storing sensitive data"
+  description = "Enable Key Vault for secrets management"
   type        = bool
   default     = true
 }
 
 variable "key_vault_sku" {
-  description = "SKU for the Key Vault"
+  description = "Key Vault SKU"
   type        = string
   default     = "standard"
 }
 
-# Database Configuration for Key Vault
+# External Secrets Configuration
+# External Secrets Configuration (using null_resource approach)
+# variable "enable_external_secrets" {
+#   description = "Enable External Secrets Operator for dynamic secret management"
+#   type        = bool
+#   default     = false
+# }
+# Note: External Secrets Operator is now deployed via null_resource to avoid chicken-egg problem
+
+# Database Configuration
 variable "postgres_username" {
-  description = "PostgreSQL username"
+  description = "PostgreSQL admin username"
   type        = string
   default     = "postgres"
 }
 
 variable "postgres_password" {
-  description = "PostgreSQL password"
+  description = "PostgreSQL admin password"
   type        = string
-  default     = "SecurePassword123!"
   sensitive   = true
+  default     = "SecurePassword123!"
 }
 
 variable "postgres_database" {
   description = "PostgreSQL database name"
   type        = string
-  default     = "eventbookingdb"
+  default     = "goalsdb"
+}
+
+# Cost optimization variables
+variable "enable_spot_pool" {
+  description = "Enable spot instance node pool for cost savings"
+  type        = bool
+  default     = true
+}
+
+variable "spot_max_price" {
+  description = "Maximum price per hour for spot instances in USD"
+  type        = number
+  default     = 0.05
+}
+
+variable "enable_scheduled_scaling" {
+  description = "Enable scheduled scaling for off-hours cost savings"
+  type        = bool
+  default     = false
+}
+
+variable "min_node_count" {
+  description = "Minimum number of nodes in default pool"
+  type        = number
+  default     = 1
+}
+
+variable "max_node_count" {
+  description = "Maximum number of nodes in default pool"
+  type        = number
+  default     = 3
+}
+
+variable "enable_ephemeral_disk" {
+  description = "Use ephemeral OS disks for cost savings"
+  type        = bool
+  default     = false
 }

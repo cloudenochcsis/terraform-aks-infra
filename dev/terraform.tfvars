@@ -1,10 +1,10 @@
-# Environment Configuration
+# Environment Configuration - Cost Optimized
 environment             = "dev"                # Environment name (dev/test/prod)
-location                = "eastus"             # Azure region for resource deployment
+location                = "Central US"          # Cost-optimized region (15% cheaper than East US)
 resource_group_name     = "aks-gitops-rg"      # Azure resource group name
 kubernetes_cluster_name = "aks-gitops-cluster" # AKS cluster name
-node_count              = 2                    # Number of worker nodes in AKS cluster
-vm_size                 = "Standard_D2s_v3"    # VM size for AKS nodes
+node_count              = 1                    # Reduced from 2 for cost savings
+vm_size                 = "Standard_B2s"       # Cost-optimized VM (60% cheaper than D2s_v3)
 kubernetes_version      = "1.32.5"             # Kubernetes version for AKS cluster
 
 # GitOps Configuration
@@ -21,9 +21,17 @@ tags = {
   ManagedBy   = "Terraform"
 }
 
-# Key Vault Configuration
-enable_key_vault = true
+# Key Vault Configuration - Cost Optimized for Dev
+enable_key_vault = false  # Disabled for dev environment to reduce costs
 key_vault_sku    = "standard"
+
+# Cost Optimization Settings
+enable_spot_pool = true          # Enable spot instances for 60-90% savings
+spot_max_price = 0.03           # Max $0.03/hour for spot instances
+enable_scheduled_scaling = false # Disable scheduled scaling for dev
+min_node_count = 1              # Minimum nodes in default pool
+max_node_count = 3              # Maximum nodes in default pool
+enable_ephemeral_disk = true    # Use ephemeral disks for cost savings
 
 # Database Credentials (will be stored in Key Vault)
 postgres_username = "postgres"

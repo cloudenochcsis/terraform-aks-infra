@@ -58,13 +58,17 @@ resource "azurerm_kubernetes_cluster" "main" {
   default_node_pool {
     name                        = "default"
     os_disk_size_gb             = 30
+    os_disk_type                = var.enable_ephemeral_disk ? "Ephemeral" : "Managed"
     vm_size                     = var.vm_size
     temporary_name_for_rotation = "tmpdefault"
 
-    # Enable auto-scaling for better reliability
+    # Cost-optimized auto-scaling configuration
     auto_scaling_enabled = true
-    min_count            = 1
-    max_count            = 5
+    min_count            = var.min_node_count
+    max_count            = var.max_node_count
+
+    # Use Azure Linux for cost savings (no licensing fees)
+    os_sku = "AzureLinux"
   }
 
   # Conditional SSH key configuration
@@ -98,6 +102,20 @@ resource "azurerm_kubernetes_cluster" "main" {
   network_profile {
     network_plugin = "azure"
     network_policy = "azure"
+  }
+
+  # Cost-optimized auto-scaler profile
+  auto_scaler_profile {
+    balance_similar_node_groups                = true
+    expander                                   = "least-waste"  # Cost-focused expansion
+    scale_down_delay_after_add                = "5m"           # Faster scale-down after scale-up
+    scale_down_delay_after_failure            = "2m"           # Quick recovery from failures
+    scale_down_unneeded                       = "5m"           # Faster detection of unneeded nodes
+    scale_down_utilization_threshold          = "0.3"          # Lower utilization threshold
+    max_graceful_termination_sec              = "300"          # Faster pod termination
+    skip_nodes_with_local_storage             = false          # Allow scaling nodes with local storage
+    scan_interval                             = "30s"          # More frequent scaling decisions
+    new_pod_scale_up_delay                    = "5s"           # Quick response to new pods
   }
 
   # Ignore changes to kubernetes_version to prevent unwanted upgrades
@@ -324,5 +342,93 @@ resource "azurerm_key_vault_secret" "postgres_connection_string" {
   }
 
   depends_on = [azurerm_key_vault.main]
+}
+
+# ===============================
+# COST OPTIMIZATION: SPOT NODE POOL
+# ===============================
+
+# Spot instance node pool for non-critical workloads (60-90% cost savings)
+resource "azurerm_kubernetes_cluster_node_pool" "spot" {
+  count = var.enable_spot_pool ? 1 : 0
+
+  name                  = "spot"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.main.id
+  vm_size              = var.vm_size
+  
+  # Spot pricing configuration
+  priority        = "Spot"
+  eviction_policy = "Delete"
+  spot_max_price  = var.spot_max_price
+
+  # Enable aggressive auto-scaling for spot instances
+  auto_scaling_enabled = true
+  min_count           = 0   # Can scale to zero
+  max_count           = 10  # Allow more spot instances
+
+  # Cost optimization settings
+  os_disk_type    = var.enable_ephemeral_disk ? "Ephemeral" : "Managed"
+  os_disk_size_gb = 30
+  os_sku          = "AzureLinux"  # No licensing costs
+
+  # Node configuration for spot instances
+  mode = "User"  # Don't run system pods on spot nodes
+
+  # Add taints to prevent regular workloads from being scheduled
+  node_taints = ["kubernetes.azure.com/scalesetpriority=spot:NoSchedule"]
+
+  # Labels for workload targeting
+  node_labels = {
+    "kubernetes.azure.com/scalesetpriority" = "spot"
+    "node-type" = "spot"
+    "cost-optimized" = "true"
+  }
+
+  tags = merge(local.common_tags, {
+    NodeType     = "Spot"
+    CostOptimized = "true"
+  })
+
+  depends_on = [
+    azurerm_kubernetes_cluster.main,
+    time_sleep.wait_for_cluster
+  ]
+}
+
+# Optional: Scheduled scaling node pool for off-hours cost savings
+resource "azurerm_kubernetes_cluster_node_pool" "scheduled" {
+  count = var.enable_scheduled_scaling ? 1 : 0
+
+  name                  = "scheduled"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.main.id
+  vm_size              = "Standard_B2s"  # Burstable instances for variable workloads
+  
+  # Scale to zero during off-hours capability
+  auto_scaling_enabled = true
+  min_count           = 0
+  max_count           = 5
+
+  # Cost optimization settings
+  os_disk_type    = "Ephemeral"  # Always use ephemeral for scheduled workloads
+  os_disk_size_gb = 30
+  os_sku          = "AzureLinux"
+
+  mode = "User"  # User workloads only
+
+  node_labels = {
+    "node-type" = "scheduled"
+    "cost-optimized" = "true"
+    "scaling-policy" = "scheduled"
+  }
+
+  tags = merge(local.common_tags, {
+    NodeType     = "Scheduled"
+    CostOptimized = "true"
+  })
+
+  depends_on = [
+    azurerm_kubernetes_cluster.main,
+    time_sleep.wait_for_cluster
+  ]
 }
 

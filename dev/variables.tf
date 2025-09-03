@@ -115,3 +115,40 @@ variable "postgres_database" {
   type        = string
   default     = "goalsdb"
 }
+
+# Cost optimization variables
+variable "enable_spot_pool" {
+  description = "Enable spot instance node pool for cost savings"
+  type        = bool
+  default     = true
+}
+
+variable "spot_max_price" {
+  description = "Maximum price per hour for spot instances in USD"
+  type        = number
+  default     = 0.05
+}
+
+variable "enable_scheduled_scaling" {
+  description = "Enable scheduled scaling for off-hours cost savings"
+  type        = bool
+  default     = false
+}
+
+variable "min_node_count" {
+  description = "Minimum number of nodes in default pool"
+  type        = number
+  default     = 1
+}
+
+variable "max_node_count" {
+  description = "Maximum number of nodes in default pool"
+  type        = number
+  default     = 3
+}
+
+variable "enable_ephemeral_disk" {
+  description = "Use ephemeral OS disks for cost savings"
+  type        = bool
+  default     = false
+}
