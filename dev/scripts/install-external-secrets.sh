@@ -33,7 +33,7 @@ echo "Waiting for External Secrets Operator to be ready..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=external-secrets -n external-secrets-system --timeout=300s
 
 echo "Creating application namespace..."
-kubectl create namespace "event-booking-${ENVIRONMENT}" --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace "3-tier-webapp-${ENVIRONMENT}" --dry-run=client -o yaml | kubectl apply -f -
 
 echo "Creating SecretStore for Azure Key Vault..."
 cat <<EOF | kubectl apply -f -
@@ -41,7 +41,7 @@ apiVersion: external-secrets.io/v1
 kind: SecretStore
 metadata:
   name: azure-keyvault-store
-  namespace: event-booking-${ENVIRONMENT}
+  namespace: 3-tier-webapp-${ENVIRONMENT}
 spec:
   provider:
     azurekv:
@@ -56,7 +56,7 @@ apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: postgres-credentials
-  namespace: event-booking-${ENVIRONMENT}
+  namespace: 3-tier-webapp-${ENVIRONMENT}
 spec:
   refreshInterval: 1m
   secretStoreRef:
@@ -81,11 +81,11 @@ spec:
 EOF
 
 echo "Verifying ExternalSecret status..."
-kubectl wait --for=condition=Ready externalsecret postgres-credentials -n "event-booking-${ENVIRONMENT}" --timeout=300s || true
+kubectl wait --for=condition=Ready externalsecret postgres-credentials -n "3-tier-webapp-${ENVIRONMENT}" --timeout=300s || true
 
 echo "Checking secret creation..."
 for i in {1..30}; do
-  if kubectl get secret postgres-credentials-from-kv -n "event-booking-${ENVIRONMENT}" >/dev/null 2>&1; then
+  if kubectl get secret postgres-credentials-from-kv -n "3-tier-webapp-${ENVIRONMENT}" >/dev/null 2>&1; then
     echo "Secret postgres-credentials-from-kv created successfully!"
     break
   else
