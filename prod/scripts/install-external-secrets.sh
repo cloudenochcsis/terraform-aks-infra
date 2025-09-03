@@ -2,7 +2,13 @@
 set -e
 
 # External Secrets Operator Installation Script
-# This script installs and configures External Secrets Operator for Azure Key Vault integration
+# This script insta  if kubectl get secret postgres-credentials-from-kv -n "event-booking-${ENVIRONMENT}" >/dev/null 2>&1; then
+    echo "Secret postgres-credentials-from-kv created successfully!"
+    break
+  else
+    echo "Waiting for secret creation... (attempt $i/30)"
+    sleep 10
+  fi configures External Secrets Operator for Azure Key Vault integration
 
 # Parameters passed from Terraform
 RESOURCE_GROUP_NAME=$1
@@ -29,7 +35,7 @@ helm upgrade --install external-secrets external-secrets/external-secrets \
   --set installCRDs=true \
   --wait --timeout=300s
 
-echo "⏳ Waiting for External Secrets Operator to be ready..."
+echo "Waiting for External Secrets Operator to be ready..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=external-secrets -n external-secrets-system --timeout=300s
 
 echo "Creating application namespace..."
@@ -89,7 +95,7 @@ for i in {1..30}; do
     echo "Secret postgres-credentials-from-kv created successfully!"
     break
   else
-    echo "⏳ Waiting for secret creation... (attempt $i/30)"
+    echo "Waiting for secret creation... (attempt $i/30)"
     sleep 10
   fi
 done

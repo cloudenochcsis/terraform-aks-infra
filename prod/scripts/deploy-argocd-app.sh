@@ -30,7 +30,7 @@ if ! kubectl cluster-info --request-timeout=30s; then
 fi
 
 # Wait for ArgoCD to be ready
-echo "⏳ Waiting for ArgoCD server to be ready..."
+echo "Waiting for ArgoCD server to be ready..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n ${ARGOCD_NAMESPACE} --timeout=300s
 
 # Check if ArgoCD server is accessible
