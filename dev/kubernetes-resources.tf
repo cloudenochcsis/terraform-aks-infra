@@ -91,7 +91,7 @@ resource "null_resource" "goal_tracker_app" {
   # Cleanup when destroying
   provisioner "local-exec" {
     when    = destroy
-    command = "kubectl delete application event-booking-app-${self.triggers.environment} -n ${self.triggers.argocd_namespace} --ignore-not-found=true"
+    command = "kubectl delete application 3-tier-webapp-${self.triggers.environment} -n ${self.triggers.argocd_namespace} --ignore-not-found=true"
   }
 
   depends_on = [helm_release.argocd]

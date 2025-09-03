@@ -36,7 +36,7 @@ Now, Argo CD takes over as the single source of truth for the application's stat
 First, it's important to understand that **Argo CD does not build your code**. A separate Continuous Integration (CI) pipeline handles that:
 
 1.  **Code is Pushed**: A developer pushes a change to the application's source code.
-2.  **Image is Built**: A CI tool (like GitHub Actions or Jenkins) automatically builds this code into a new Docker container image (e.g., `akpadetsi/event-booking-frontend:v3`).
+2.  **Image is Built**: A CI tool (like GitHub Actions or Jenkins) automatically builds this code into a new Docker container image (e.g., `mycompany/3-tier-webapp-frontend:v3`).
 3.  **Image is Pushed**: The new image is pushed to a container registry (like Docker Hub or Azure Container Registry).
 4.  **The GitOps Trigger**: The CI pipeline's final job is to update a file in the **GitOps repository** (the one Argo CD is watching). Specifically, it updates the `kustomization.yaml` file to point to the new image tag (`newTag: v3`).
 
@@ -47,7 +47,7 @@ The change to the `kustomization.yaml` file is the trigger for the deployment:
 1.  **Change Detected**: Argo CD, which is constantly monitoring the GitOps repository, detects the updated image tag.
 2.  **Manifests Generated**: Argo CD uses Kustomize to prepare the final, complete set of Kubernetes manifests. Kustomize takes the base YAML files (like `frontend-complete.yaml`) and applies the configuration from `kustomization.yaml` (like the new image tag and replica counts).
 3.  **Sync to Cluster**: Argo CD compares the newly generated manifests with what is currently running in the AKS cluster. It sees a difference and applies the changes.
-4.  **Kubernetes Takes Over**: The Kubernetes cluster receives the updated `Deployment` object. It sees the new image tag (`akpadetsi/event-booking-frontend:v3`) and pulls the new image from the container registry, deploying it seamlessly to update the application.
+4.  **Kubernetes Takes Over**: The Kubernetes cluster receives the updated `Deployment` object. It sees the new image tag (`mycompany/3-tier-webapp-frontend:v3`) and pulls the new image from the container registry, deploying it seamlessly to update the application.
 
 ---
 
