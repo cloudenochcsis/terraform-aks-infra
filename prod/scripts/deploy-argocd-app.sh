@@ -43,9 +43,9 @@ envsubst < argocd-app-manifest.yaml | kubectl apply -f -
 
 # Wait for application to be created
 echo "Verifying ArgoCD Application creation..."
-kubectl wait --for=condition=Healthy application/3tirewebapp-${ENVIRONMENT} -n ${ARGOCD_NAMESPACE} --timeout=180s || true
+kubectl wait --for=condition=Healthy application/event-booking-app-${ENVIRONMENT} -n ${ARGOCD_NAMESPACE} --timeout=180s || true
 
 # Show application status
-kubectl get application 3tirewebapp-${ENVIRONMENT} -n ${ARGOCD_NAMESPACE} || true
+kubectl get application event-booking-app-${ENVIRONMENT} -n ${ARGOCD_NAMESPACE} || true
 
     echo "ArgoCD Application deployed successfully!"

@@ -10,10 +10,10 @@ ENVIRONMENT=$1
 echo "Cleaning up External Secrets resources..."
 
 # Delete ExternalSecret
-kubectl delete externalsecret postgres-credentials -n "3tirewebapp-${ENVIRONMENT}" --ignore-not-found=true || true
+kubectl delete externalsecret postgres-credentials -n "event-booking-${ENVIRONMENT}" --ignore-not-found=true || true
 
 # Delete SecretStore
-kubectl delete secretstore azure-keyvault-store -n "3tirewebapp-${ENVIRONMENT}" --ignore-not-found=true || true
+kubectl delete secretstore azure-keyvault-store -n "event-booking-${ENVIRONMENT}" --ignore-not-found=true || true
 
 # Uninstall External Secrets Operator
 helm uninstall external-secrets -n external-secrets-system || true
